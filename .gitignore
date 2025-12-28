@@ -1,1 +1,12 @@
+# ---------- Environment & local files ----------
 .env
+
+# ---------- Notebooks ----------
+*.ipynb
+
+# ---------- PDF research papers (any depth) ----------
+**/data/papers/**/*.pdf
+
+# ---------- Python cache ----------
+**/__pycache__/
+**/*.pyc
