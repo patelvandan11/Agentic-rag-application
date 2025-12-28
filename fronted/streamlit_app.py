@@ -1,40 +1,95 @@
 import streamlit as st
 import requests
 
-API_URL = "http://localhost:8000/research"
+# ===============================
+# Backend API URLs
+# ===============================
+BACKEND_URL = "http://127.0.0.1:8000"
+UPLOAD_API = f"{BACKEND_URL}/upload-file"
+SEARCH_API = f"{BACKEND_URL}/search"
 
-st.set_page_config(page_title="AI Research Assistant", layout="wide")
-
-st.title("🧠 AI Research Assistant (Agentic RAG)")
-st.write("Ask a research question and let agents do the work.")
-
-query = st.text_input(
-    "Enter your research question",
-    placeholder="Compare CNN vs Vision Transformers for medical imaging"
+# ===============================
+# Page Config
+# ===============================
+st.set_page_config(
+    page_title="Agentic RAG – Research Assistant",
+    layout="wide"
 )
 
-if st.button("Run Research"):
-    if not query:
-        st.warning("Please enter a question")
-    else:
-        with st.spinner("Agents are working..."):
-            response = requests.post(API_URL, params={"query": query})
+st.title("📚 Agentic RAG – Research Assistant")
+st.write("Upload research PDFs and ask questions using RAG + Pinecone.")
+
+# ===============================
+# SIDEBAR – FILE UPLOAD
+# ===============================
+st.sidebar.header("📄 Upload Document")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Choose a PDF from any location",
+    type=["pdf"]
+)
+
+if uploaded_file is not None:
+    st.sidebar.write("Selected file:", uploaded_file.name)
+
+    if st.sidebar.button("Upload & Index"):
+        # ✅ FIXED HERE
+        with st.spinner("Uploading and indexing PDF..."):
+            response = requests.post(
+                UPLOAD_API,
+                files={"file": uploaded_file}
+            )
 
         if response.status_code == 200:
             data = response.json()
-
-            st.subheader("📌 Planner Output")
-            st.text(data["plan"])
-
-            st.subheader("📄 Retrieved Papers")
-            for p in data["papers"]:
-                st.markdown(f"**{p['title']}** ({p['source']})")
-                st.write(p["summary"])
-
-            st.subheader("🧠 Agent Analysis")
-            st.write(data["analysis"])
-
-            st.subheader("✅ Final Summary")
-            st.success(data["summary"])
+            st.sidebar.success("✅ File indexed successfully")
+            st.sidebar.write("Chunks created:", data["chunks"])
         else:
-            st.error("Backend error occurred")
+            st.sidebar.error("❌ Upload failed")
+
+# ===============================
+# MAIN – SEARCH SECTION
+# ===============================
+st.header("🔎 Ask a Question")
+
+query = st.text_input(
+    "Enter your question based on uploaded documents",
+    placeholder="e.g. What are the key contributions of this paper?"
+)
+
+if st.button("Search"):
+    if not query:
+        st.warning("Please enter a question.")
+    else:
+        with st.spinner("Searching documents..."):
+            response = requests.post(
+                SEARCH_API,
+                params={"query": query}
+            )
+
+        if response.status_code != 200:
+            st.error("❌ Search failed")
+        else:
+            data = response.json()
+
+            # ===============================
+            # ANSWER SECTION
+            # ===============================
+            st.subheader("🧠 AI Answer")
+            st.success(data.get("answer", "No answer generated"))
+
+            # ===============================
+            # RETRIEVED CONTEXT
+            # ===============================
+            st.subheader("📄 Retrieved Context")
+
+            results = data.get("results", [])
+
+            if not results:
+                st.info("No matching documents found.")
+            else:
+                for idx, r in enumerate(results, start=1):
+                    with st.expander(
+                        f"Result {idx} | Score: {r['score']} | Page: {r['page']}"
+                    ):
+                        st.write(r["text"])
