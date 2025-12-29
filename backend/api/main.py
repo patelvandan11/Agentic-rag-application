@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 import shutil
+from pydantic import BaseModel
 import os
 from agents import Runner
 from ai_agents.planner_agent import planner_agent
@@ -81,4 +82,101 @@ async def search(query: str):
         "query": query,
         "results": processed_results,
         "answer": llm_response.final_output
+    }
+
+ 
+import os
+
+from tools.arxiv_downloader import download_arxiv_pdf
+from tools.pdf_loader import load_and_chunk_pdf
+from memory.vector_store import upsert_records
+ 
+
+UPLOAD_DIR = "downloaded_papers"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+@app.post("/download-arxiv")
+async def download_arxiv(arxiv_url: str):
+    """
+    1. Download arXiv paper
+    2. Chunk PDF
+    3. Store in Pinecone
+    """
+
+    file_path = download_arxiv_pdf(arxiv_url, UPLOAD_DIR)
+
+    return file_path
+
+class IndexRequest(BaseModel):
+    file_path: str
+
+@app.post("/index-paper")
+def index_paper(req: IndexRequest):
+    file_path = req.file_path
+     # 🔒 Safety check
+    if not os.path.exists(file_path):
+        return {"error": "File not found", "path": file_path}
+
+    records = load_and_chunk_pdf(file_path)
+    upsert_records(records)
+
+    return {
+        "message": "Paper indexed successfully",
+        "file": file_path,
+        "chunks": len(records)
+    }
+from tools.paper_search import search_research_papers
+    
+   
+@app.post("/search_papers")
+async def search_papers(query: str):
+    
+    llm=ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    results = search_research_papers(query)
+    
+    return {
+        "query": query,
+        "results": results
+    }
+    
+@app.post("/filter-arxiv")
+async def filter_arxiv(query: str):
+    """
+    Filter, download, and index arXiv papers based on query
+    """
+
+    # ✅ MUST await async function
+    search_results = await search_papers(query)
+
+    # search_results is now a dict
+    results = search_results.get("results", [])
+
+    # 2️⃣ Filter ONLY arXiv links
+    arxiv_links = [
+        res["link"]
+        for res in results
+        if "arxiv.org/abs/" in res.get("link", "")
+        or "arxiv.org/pdf/" in res.get("link", "")
+    ]
+
+    if not arxiv_links:
+        return {
+            "message": "No arXiv papers found",
+            "downloaded_files": []
+        }
+
+    # 3️⃣ Download, chunk, and index
+    downloaded_files = []
+
+    for link in arxiv_links:
+        file_path = download_arxiv_pdf(link, UPLOAD_DIR)
+        downloaded_files.append(file_path)
+
+         
+
+    return {
+        "message": "Filtered arXiv papers downloaded and indexed successfully",
+        "downloaded_files": downloaded_files,
+        "count": len(downloaded_files)
     }
