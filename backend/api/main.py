@@ -9,6 +9,7 @@ from ai_agents.summarizer_agent import summarizer_agent
 from tools.pdf_loader import load_and_chunk_pdf
 from memory.vector_store import upsert_records, search_records
 from langchain_openai import ChatOpenAI
+from ai_agents.react_search_agent import react_search_agent ,react_existing_agent
 
 
 app = FastAPI()
@@ -39,50 +40,25 @@ async def upload_file(file: UploadFile = File(...)):
         "filename": file.filename,
         "chunks": len(records)
     }
-
 @app.post("/search")
 async def search(query: str):
-    #  Vector search
-    hits = search_records(query)
-
-    # Process results
-    processed_results = [
-        {
-            "score": round(hit["_score"], 3),
-            "page": hit["fields"].get("page"),
-            "text": hit["fields"]["chunk_text"]
-        }
-        for hit in hits
-    ]
-
-    # Build context for LLM
-    context = "\n\n".join(
-        f"(page {r['page']}) {r['text']}"
-        for r in processed_results
-    )
-
-    # Call LLM / Agent
-    llm_input = f"""
-    Answer the question using ONLY the context below.
-
-    Question:
-    {query}
-
-    Context:
-    {context}
+    """
+    Database-only ReAct search.
+    No external search.
+    No indexing.
+    No downloading.
     """
 
-    llm_response = await Runner.run(
-        reasoning_agent,
-        llm_input
+    result = await Runner.run(
+        react_existing_agent,
+        query
     )
 
-    # Final response
     return {
         "query": query,
-        "results": processed_results,
-        "answer": llm_response.final_output
+        "answer": result.final_output
     }
+
 
  
 import os
@@ -126,6 +102,7 @@ def index_paper(req: IndexRequest):
         "file": file_path,
         "chunks": len(records)
     }
+    
 from tools.paper_search import search_research_papers
     
    
@@ -179,4 +156,14 @@ async def filter_arxiv(query: str):
         "message": "Filtered arXiv papers downloaded and indexed successfully",
         "downloaded_files": downloaded_files,
         "count": len(downloaded_files)
+    }
+
+
+@app.post("/react-search")
+async def react_search(query: str):
+    result = await Runner.run(react_search_agent, query)
+
+    return {
+        "query": query,
+        "answer": result.final_output  # ✅ SAFE
     }
