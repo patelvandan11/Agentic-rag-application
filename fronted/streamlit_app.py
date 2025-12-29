@@ -1,16 +1,24 @@
 import streamlit as st
 import requests
+import os
 
 # ===============================
 # Backend API URLs
 # ===============================
+PAPER_DIR = "backend/downloaded_papers"
+INDEX_API = "http://127.0.0.1:8000/index-paper"
 BACKEND_URL = "http://127.0.0.1:8000"
 UPLOAD_API = f"{BACKEND_URL}/upload-file"
 SEARCH_API = f"{BACKEND_URL}/search"
+ARXIV_SEARCH_API = f"{BACKEND_URL}/search_papers"
+ARXIV_FILTER_API = f"{BACKEND_URL}/filter-arxiv"
+REACT_API = f"{BACKEND_URL}/react-search"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PAPER_DIR = os.path.join(BASE_DIR, "backend", "downloaded_papers")
+UPLOAD_DIR="backend/data/papers"
+UPLOAD_API = f"{BACKEND_URL}/upload-file"
 
-# ===============================
-# Page Config
-# ===============================
+
 st.set_page_config(
     page_title="Agentic RAG – Research Assistant",
     layout="wide"
@@ -50,7 +58,6 @@ import os
 # ===============================
 # SIDEBAR – FILE UPLOAD
 
-UPLOAD_DIR="backend/data/papers"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 pdf_files = [
@@ -63,20 +70,14 @@ import os
 import streamlit as st
 import requests
 
-# ===============================
-# Config
-# ===============================
-import os
-import streamlit as st
-import requests
+
 
 # ===============================
 # Config
 # ===============================
-PAPER_DIR = "backend/downloaded_papers"
-INDEX_API = "http://127.0.0.1:8000/index-paper"
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAPER_DIR = os.path.join(BASE_DIR, "backend", "downloaded_papers")
+
+
+
 st.sidebar.header("📂 Available Papers")
 
 # Ensure directory exists
@@ -126,9 +127,17 @@ else:
             st.sidebar.success("✅ Selected papers uploaded successfully!")
 
 # ===============================
+# ===============================
 # MAIN – SEARCH SECTION
 # ===============================
 st.header("🔎 Ask a Question")
+
+# 🔹 Search type selector
+search_type = st.radio(
+    "Select Search Type",
+    ["Simple Search", "ReAct Search"],
+    horizontal=True
+)
 
 query = st.text_input(
     "Enter your question based on uploaded documents",
@@ -140,8 +149,15 @@ if st.button("Search"):
         st.warning("Please enter a question.")
     else:
         with st.spinner("Searching documents..."):
+
+            # 🔹 Choose API based on search type
+            if search_type == "Simple Search":
+                api_url = SEARCH_API   # e.g. /search
+            else:
+                api_url = REACT_API           # e.g. /react-search
+
             response = requests.post(
-                SEARCH_API,
+                api_url,
                 params={"query": query}
             )
 
@@ -168,6 +184,6 @@ if st.button("Search"):
             else:
                 for idx, r in enumerate(results, start=1):
                     with st.expander(
-                        f"Result {idx} | Score: {r['score']} | Page: {r['page']}"
+                        f"Result {idx} | Score: {r.get('score')} | Page: {r.get('page')}"
                     ):
-                        st.write(r["text"])
+                        st.write(r.get("text"))
