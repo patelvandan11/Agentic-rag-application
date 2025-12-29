@@ -46,6 +46,84 @@ if uploaded_file is not None:
             st.sidebar.write("Chunks created:", data["chunks"])
         else:
             st.sidebar.error("❌ Upload failed")
+import os
+# ===============================
+# SIDEBAR – FILE UPLOAD
+
+UPLOAD_DIR="backend/data/papers"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+pdf_files = [
+    f for f in os.listdir(UPLOAD_DIR)
+    if f.lower().endswith(".pdf")
+]
+
+
+import os
+import streamlit as st
+import requests
+
+# ===============================
+# Config
+# ===============================
+import os
+import streamlit as st
+import requests
+
+# ===============================
+# Config
+# ===============================
+PAPER_DIR = "backend/downloaded_papers"
+INDEX_API = "http://127.0.0.1:8000/index-paper"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PAPER_DIR = os.path.join(BASE_DIR, "backend", "downloaded_papers")
+st.sidebar.header("📂 Available Papers")
+
+# Ensure directory exists
+os.makedirs(PAPER_DIR, exist_ok=True)
+
+# Get ALL PDFs from disk
+all_papers = sorted([
+    f for f in os.listdir(PAPER_DIR)
+    if f.lower().endswith(".pdf")
+])
+
+# Track checkbox state
+if "paper_selection" not in st.session_state:
+    st.session_state.paper_selection = {}
+
+if not all_papers:
+    st.sidebar.info("No papers available.")
+else:
+    st.sidebar.caption("Select papers to upload into vector database")
+
+    for paper in all_papers:
+        paper_path = os.path.join(PAPER_DIR, paper)
+
+        st.session_state.paper_selection[paper_path] = st.sidebar.checkbox(
+            paper,
+            value=st.session_state.paper_selection.get(paper_path, False)
+        )
+
+    st.sidebar.divider()
+
+    if st.sidebar.button("⬆️ Upload Selected Papers"):
+        selected_papers = [
+            path for path, selected in st.session_state.paper_selection.items()
+            if selected
+        ]
+
+        if not selected_papers:
+            st.sidebar.warning("Please select at least one paper.")
+        else:
+            with st.spinner("Uploading selected papers to vector DB..."):
+                for path in selected_papers:
+                    requests.post(
+                        INDEX_API,
+                        json={"file_path": path}
+                    )
+
+            st.sidebar.success("✅ Selected papers uploaded successfully!")
 
 # ===============================
 # MAIN – SEARCH SECTION
