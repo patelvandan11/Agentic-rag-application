@@ -6,7 +6,7 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 INDEX_NAME = os.getenv("INDEX_NAME")
-NAMESPACE = os.getenv("NAMESPACE")
+NAMESPACE ="vandan"
 region = os.getenv("region")
 
 
@@ -38,11 +38,36 @@ def upsert_records(records: list[dict]):
 
 
 def search_records(query: str, top_k: int = 5):
-    results = index.search(
-        namespace=NAMESPACE,
-        query={
-            "top_k": top_k,
-            "inputs": {"text": query}
-        }
-    )
-    return results["result"]["hits"]
+    """
+    Search records in the vector database.
+    
+    Args:
+        query: Search query string
+        top_k: Number of results to return
+        
+    Returns:
+        List of matching records with metadata
+    """
+    try:
+        # Use query method for Pinecone serverless with managed embeddings
+        results = index.query(
+            namespace=NAMESPACE,
+            top_k=top_k,
+            data=query
+        )
+        
+        # Handle different response formats
+        if isinstance(results, dict):
+            if "matches" in results:
+                return results["matches"]
+            elif "result" in results and "hits" in results["result"]:
+                return results["result"]["hits"]
+            elif "hits" in results:
+                return results["hits"]
+        elif isinstance(results, list):
+            return results
+        
+        return []
+    except Exception as e:
+        print(f"Error searching records: {e}")
+        return []

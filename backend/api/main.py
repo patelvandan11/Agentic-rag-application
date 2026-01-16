@@ -9,7 +9,9 @@ from ai_agents.summarizer_agent import summarizer_agent
 from tools.pdf_loader import load_and_chunk_pdf
 from memory.vector_store import upsert_records, search_records
 from langchain_openai import ChatOpenAI
-from ai_agents.react_search_agent import react_search_agent ,react_existing_agent
+from ai_agents.react_search_agent import react_search_agent
+from ai_agents.search_agent import react_existing_agent
+from tools.paper_search import search_database_tool
 
 
 app = FastAPI()
@@ -45,8 +47,10 @@ async def search(query: str):
     """
     Database-only ReAct search.
     No external search.
-    No indexing.
-    No downloading.
+    1. Search vector DB
+    2. Use ReAct agent to reason over results
+    3. Return final answer
+    
     """
 
     result = await Runner.run(
@@ -167,3 +171,5 @@ async def react_search(query: str):
         "query": query,
         "answer": result.final_output  # ✅ SAFE
     }
+
+# thsi is my main code

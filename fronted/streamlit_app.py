@@ -143,7 +143,6 @@ query = st.text_input(
     "Enter your question based on uploaded documents",
     placeholder="e.g. What are the key contributions of this paper?"
 )
-
 if st.button("Search"):
     if not query:
         st.warning("Please enter a question.")
@@ -152,9 +151,9 @@ if st.button("Search"):
 
             # 🔹 Choose API based on search type
             if search_type == "Simple Search":
-                api_url = SEARCH_API   # e.g. /search
+                api_url = SEARCH_API      # /search
             else:
-                api_url = REACT_API           # e.g. /react-search
+                api_url = REACT_API       # /react-search
 
             response = requests.post(
                 api_url,
@@ -170,20 +169,43 @@ if st.button("Search"):
             # ANSWER SECTION
             # ===============================
             st.subheader("🧠 AI Answer")
-            st.success(data.get("answer", "No answer generated"))
 
-            # ===============================
-            # RETRIEVED CONTEXT
-            # ===============================
-            st.subheader("📄 Retrieved Context")
-
-            results = data.get("results", [])
-
-            if not results:
-                st.info("No matching documents found.")
+            if search_type == "Simple Search":
+                st.success(data.get("answer", "No answer generated"))
             else:
-                for idx, r in enumerate(results, start=1):
-                    with st.expander(
-                        f"Result {idx} | Score: {r.get('score')} | Page: {r.get('page')}"
-                    ):
-                        st.write(r.get("text"))
+                st.success(data.get("final_output", "No answer generated"))
+
+            # ===============================
+            # VECTOR RESULTS (ONLY FOR SIMPLE SEARCH)
+            # ===============================
+            if search_type == "Simple Search":
+                st.subheader("📄 Retrieved Context (Vector Similarity)")
+
+                results = data.get("results", [])
+
+                # if not results:
+                #     st.info("No matching documents found.")
+                # else:
+                #     # 🔽 Sort by similarity score (highest first)
+                #     results = sorted(
+                #         results,
+                #         key=lambda x: x.get("score", 0),
+                #         reverse=True
+                #     )
+
+                #     for idx, r in enumerate(results, start=1):
+                #         with st.expander(
+                #             f"Result {idx} | Similarity: {r.get('score')} | Page: {r.get('page')}"
+                #         ):
+                #             st.write(r.get("text"))
+
+            # ===============================
+            # AGENT TRACE (ONLY FOR REACT SEARCH)
+            # ===============================
+            else:
+                st.subheader("🤖 Agent Reasoning Trace")
+
+                for step in data.get("agent_trace", []):
+                    st.markdown(
+                        f"**{step.get('type', 'step').upper()}**: {step.get('content')}"
+                    )
