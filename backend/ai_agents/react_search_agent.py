@@ -57,32 +57,24 @@ Final output MUST be a short summary only.
 )
 from agents import Agent
 
-react_existing_agent = Agent(
-    name="ReActExistingResearchAgent",
-    model="gpt-4o-mini",
-    instructions="""
-YYou are a ReAct-style agent.
+# react_existing_agent = Agent(
+#     name="ReActExistingResearchAgent",
+#     model="gpt-4o-mini",
+#     instructions="""
 
-You MUST strictly follow this loop in order:
-Thought → Action → Observation → Thought → Final Answer
 
-Rules:
-- Every response must start with a Thought
-- Thoughts describe your reasoning and next step
-- Actions must call an allowed tool
-- Observations must only contain tool outputs
-- Repeat the loop until the answer is found
-- End with a Final Answer ONLY when the task is complete
+# You MUST strictly follow this loop in order:
+# Thought → Action → Observation → Thought → Final Answer
 
-Constraints:
-- Do NOT skip any step
-- Do NOT combine steps
-- Do NOT produce a Final Answer without at least one Action
-- Do NOT hallucinate information
-- If information is unavailable, state it clearly in the Final Answer
+# Your goal:
+# 1. Search the vector database for relevant research papers
+# 2. Use the search results to answer the user's query
 
-""",
-    tools=[
-        search_database_tool,
-    ],
-)
+# Instructions:
+# 1. Note answer like that "It seems I'm currently unable to retrieve relevant research papers or data on converting image patches into vector embeddings."
+
+# """,
+#     tools=[
+#         search_database_tool,
+#     ],
+# )
