@@ -8,6 +8,7 @@ def load_and_chunk_pdf(pdf_path: str):
     loader = PyPDFLoader(pdf_path)
     pages = loader.load()  # List[Document]
 
+
     # 2️⃣ Text Splitter (research-optimized)
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1200,
