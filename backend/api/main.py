@@ -16,7 +16,8 @@ from langchain_openai import ChatOpenAI
 from ai_agents.react_search_agent import react_search_agent
 from ai_agents.search_agent import react_existing_agent
 from tools.paper_search import search_database_tool
-
+from Audio.TTS import translate_speech
+from Audio.STT import text_to_speech
 
 app = FastAPI()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -29,6 +30,15 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def health():
     return {"status": "ok"}
 
+@app.post("/text-to-speech")
+async def tts_endpoint(text: str, output_file: str):
+    text_to_speech(text, output_file)
+    return {"message": "Text converted to speech successfully", "output_file": output_file} 
+
+@app.post("/speech-to-text")
+async def stt_endpoint(audio_file_path: str):
+    transcription = translate_speech(audio_file_path)
+    return {"message": "Speech transcribed successfully", "transcription": transcription}
 
 # ✅ NEW: Upload PDF from ANY local path (via UI)
 @app.post("/upload-file")
