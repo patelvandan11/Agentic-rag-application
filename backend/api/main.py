@@ -78,8 +78,6 @@ async def search(query: str):
     }
 
 
- 
-
 UPLOAD_DIR = "downloaded_papers"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
