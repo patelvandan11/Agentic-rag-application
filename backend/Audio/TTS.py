@@ -11,5 +11,3 @@ def translate_speech(audio_file_path: str) -> str:
     return transcription.text.strip()
 
 
-
-Shruti@09032004
