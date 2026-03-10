@@ -5,20 +5,27 @@ import os
 # ===============================
 # Backend API URLs
 # ===============================
-PAPER_DIR = "backend/downloaded_papers"
-INDEX_API = "http://127.0.0.1:8000/index-paper"
 BACKEND_URL = "http://127.0.0.1:8000"
+
 UPLOAD_API = f"{BACKEND_URL}/upload-file"
 SEARCH_API = f"{BACKEND_URL}/search"
-ARXIV_SEARCH_API = f"{BACKEND_URL}/search_papers"
-ARXIV_FILTER_API = f"{BACKEND_URL}/filter-arxiv"
 REACT_API = f"{BACKEND_URL}/react-search"
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INDEX_API = f"{BACKEND_URL}/index-paper"
+
+# Audio APIs
+TTS_API = f"{BACKEND_URL}/text-to-speech"
+STT_API = f"{BACKEND_URL}/speech-to-text"
+RECORD_API = f"{BACKEND_URL}/record"
+
+# Directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PAPER_DIR = os.path.join(BASE_DIR, "backend", "downloaded_papers")
-UPLOAD_DIR="backend/data/papers"
-UPLOAD_API = f"{BACKEND_URL}/upload-file"
 
+os.makedirs(PAPER_DIR, exist_ok=True)
 
+# ===============================
+# PAGE CONFIG
+# ===============================
 st.set_page_config(
     page_title="Agentic RAG – Research Assistant",
     layout="wide"
@@ -33,16 +40,18 @@ st.write("Upload research PDFs and ask questions using RAG + Pinecone.")
 st.sidebar.header("📄 Upload Document")
 
 uploaded_file = st.sidebar.file_uploader(
-    "Choose a PDF from any location",
+    "Choose a PDF",
     type=["pdf"]
 )
 
 if uploaded_file is not None:
+
     st.sidebar.write("Selected file:", uploaded_file.name)
 
     if st.sidebar.button("Upload & Index"):
-        # ✅ FIXED HERE
+
         with st.spinner("Uploading and indexing PDF..."):
+
             response = requests.post(
                 UPLOAD_API,
                 files={"file": uploaded_file}
@@ -50,55 +59,34 @@ if uploaded_file is not None:
 
         if response.status_code == 200:
             data = response.json()
+
             st.sidebar.success("✅ File indexed successfully")
             st.sidebar.write("Chunks created:", data["chunks"])
+
         else:
             st.sidebar.error("❌ Upload failed")
-import os
-# ===============================
-# SIDEBAR – FILE UPLOAD
-
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-pdf_files = [
-    f for f in os.listdir(UPLOAD_DIR)
-    if f.lower().endswith(".pdf")
-]
-
-
-import os
-import streamlit as st
-import requests
-
 
 
 # ===============================
-# Config
+# SIDEBAR – EXISTING PAPERS
 # ===============================
-
-
-
 st.sidebar.header("📂 Available Papers")
 
-# Ensure directory exists
-os.makedirs(PAPER_DIR, exist_ok=True)
-
-# Get ALL PDFs from disk
 all_papers = sorted([
     f for f in os.listdir(PAPER_DIR)
     if f.lower().endswith(".pdf")
 ])
 
-# Track checkbox state
 if "paper_selection" not in st.session_state:
     st.session_state.paper_selection = {}
 
 if not all_papers:
-    st.sidebar.info("No papers available.")
+    st.sidebar.info("No papers available")
+
 else:
-    st.sidebar.caption("Select papers to upload into vector database")
 
     for paper in all_papers:
+
         paper_path = os.path.join(PAPER_DIR, paper)
 
         st.session_state.paper_selection[paper_path] = st.sidebar.checkbox(
@@ -108,52 +96,95 @@ else:
 
     st.sidebar.divider()
 
-    if st.sidebar.button("⬆️ Upload Selected Papers"):
+    if st.sidebar.button("⬆ Upload Selected Papers"):
+
         selected_papers = [
             path for path, selected in st.session_state.paper_selection.items()
             if selected
         ]
 
         if not selected_papers:
-            st.sidebar.warning("Please select at least one paper.")
+            st.sidebar.warning("Select at least one paper")
+
         else:
-            with st.spinner("Uploading selected papers to vector DB..."):
+
+            with st.spinner("Uploading papers to vector DB..."):
+
                 for path in selected_papers:
+
                     requests.post(
                         INDEX_API,
                         json={"file_path": path}
                     )
 
-            st.sidebar.success("✅ Selected papers uploaded successfully!")
+            st.sidebar.success("✅ Papers uploaded successfully")
+
 
 # ===============================
+# VOICE INPUT (STT)
 # ===============================
-# MAIN – SEARCH SECTION
+st.header("🎤 Voice Question")
+
+if st.button("Record Question"):
+
+    with st.spinner("Recording voice..."):
+
+        r = requests.get(RECORD_API)
+
+        if r.status_code == 200:
+
+            audio_file = r.json()["file"]
+
+            stt = requests.post(
+                STT_API,
+                params={"audio_file_path": audio_file}
+            )
+
+            if stt.status_code == 200:
+
+                query = stt.json()["transcription"]
+
+                st.success("Voice converted to text")
+                st.write("Query:", query)
+
+                st.session_state.voice_query = query
+                
+                
+
+
+# ===============================
+# SEARCH SECTION
 # ===============================
 st.header("🔎 Ask a Question")
 
-# 🔹 Search type selector
 search_type = st.radio(
-    "Select Search Type",
+    "Search Type",
     ["Simple Search", "ReAct Search"],
     horizontal=True
 )
 
 query = st.text_input(
-    "Enter your question based on uploaded documents",
-    placeholder="e.g. What are the key contributions of this paper?"
+    "Enter your question",
+    value=st.session_state.get("voice_query", ""),
+    placeholder="e.g. What are the contributions of this paper?"
 )
+
+# ===============================
+# SEARCH BUTTON
+# ===============================
 if st.button("Search"):
+
     if not query:
-        st.warning("Please enter a question.")
+        st.warning("Please enter a question")
+
     else:
+
         with st.spinner("Searching documents..."):
 
-            # 🔹 Choose API based on search type
             if search_type == "Simple Search":
-                api_url = SEARCH_API      # /search
+                api_url = SEARCH_API
             else:
-                api_url = REACT_API       # /react-search
+                api_url = REACT_API
 
             response = requests.post(
                 api_url,
@@ -161,51 +192,47 @@ if st.button("Search"):
             )
 
         if response.status_code != 200:
-            st.error("❌ Search failed")
+
+            st.error("Search failed")
+
         else:
+
             data = response.json()
 
-            # ===============================
-            # ANSWER SECTION
-            # ===============================
             st.subheader("🧠 AI Answer")
 
             if search_type == "Simple Search":
-                st.success(data.get("answer", "No answer generated"))
+                answer = data.get("answer", "No answer generated")
+
             else:
-                st.success(data.get("final_output", "No answer generated"))
+                answer = data.get("answer", "No answer generated")
+
+            st.success(answer)
 
             # ===============================
-            # VECTOR RESULTS (ONLY FOR SIMPLE SEARCH)
+            # TEXT TO SPEECH
             # ===============================
-            if search_type == "Simple Search":
-                st.subheader("📄 Retrieved Context (Vector Similarity)")
-
-                results = data.get("results", [])
-
-                # if not results:
-                #     st.info("No matching documents found.")
-                # else:
-                #     # 🔽 Sort by similarity score (highest first)
-                #     results = sorted(
-                #         results,
-                #         key=lambda x: x.get("score", 0),
-                #         reverse=True
-                #     )
-
-                #     for idx, r in enumerate(results, start=1):
-                #         with st.expander(
-                #             f"Result {idx} | Similarity: {r.get('score')} | Page: {r.get('page')}"
-                #         ):
-                #             st.write(r.get("text"))
+            import tempfile
 
             # ===============================
-            # AGENT TRACE (ONLY FOR REACT SEARCH)
+            # TEXT TO SPEECH
             # ===============================
-            else:
-                st.subheader("🤖 Agent Reasoning Trace")
+            if st.button("🔊 Listen Answer"):
 
-                for step in data.get("agent_trace", []):
-                    st.markdown(
-                        f"**{step.get('type', 'step').upper()}**: {step.get('content')}"
+                    response = requests.post(
+                        TTS_API,
+                        params={"text": answer}
                     )
+
+                    if response.status_code == 200:
+
+                        # Save audio temporarily
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+                            f.write(response.content)
+                            audio_path = f.name
+
+                        # Play audio
+                        st.audio(audio_path, format="audio/wav")
+
+                    else:
+                        st.error("TTS failed")

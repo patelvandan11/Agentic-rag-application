@@ -3,11 +3,13 @@
 # 📚 Agentic RAG – Research Paper Question Answering System
 
 An **Agentic Retrieval-Augmented Generation (RAG)** application that allows users to **upload research papers (PDFs)** and **ask questions** using either a **Simple Search** or an **Agent-based ReAct Search**.
-
 The system is built using **FastAPI**, **Streamlit**, **Vector Database**, and **OpenAI Agents SDK**.
+## 🧠 Architecture
 
+Here's a high-level overview of the architecture:
+
+![Agentic RAG Architecture](Research-assistant.png)
 ---
-
 ## 🚀 Features
 
 - 📄 Upload research papers (PDF)

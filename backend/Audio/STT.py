@@ -3,6 +3,8 @@ from openai import OpenAI
 
 client = OpenAI()
 
+
+
 def text_to_speech(text: str, output_file: str):
     output_path = Path(output_file)
 
