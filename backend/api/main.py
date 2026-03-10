@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File ,APIRouter
 import shutil
 from pydantic import BaseModel
 import os
@@ -11,6 +11,8 @@ from memory.vector_store import upsert_records, search_records
 import os
 from tools.arxiv_downloader import download_arxiv_pdf
 from tools.pdf_loader import load_and_chunk_pdf
+import pyaudio
+import wave
 from memory.vector_store import upsert_records
 from langchain_openai import ChatOpenAI
 from ai_agents.react_search_agent import react_search_agent
@@ -24,19 +26,16 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 UPLOAD_DIR = "backend/data/papers"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
+# public_router = APIRouter(prefix="/public", tags=["Public"])
 
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-@app.post("/text-to-speech")
-async def tts_endpoint(text: str, output_file: str):
-    text_to_speech(text, output_file)
-    return {"message": "Text converted to speech successfully", "output_file": output_file} 
 
-@app.post("/speech-to-text")
-async def stt_endpoint(audio_file_path: str):
+
+@app.post("/speech-to-text",tags=["Audio"])
+def stt_endpoint(audio_file_path: str):
     transcription = translate_speech(audio_file_path)
     return {"message": "Speech transcribed successfully", "transcription": transcription}
 
@@ -78,7 +77,48 @@ async def search(query: str):
     }
 
 
+
+@app.get("/record",tags=["Audio"])
+def record_audio():
+
+    chunk = 1024
+    format = pyaudio.paInt16
+    channels = 1 
+    rate = 44100 
+    seconds = 5  # now make this button configurable in the UI and pass as a parameter to this function
+    filename = "recorded.wav"
+
+    p = pyaudio.PyAudio()
+
+    stream = p.open(format=format,
+                    channels=channels,
+                    rate=rate,
+                    input=True,
+                    frames_per_buffer=chunk)
+
+    frames = []
+
+    for _ in range(0, int(rate / chunk * seconds)):
+        data = stream.read(chunk)
+        frames.append(data)
+
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+
+    wf = wave.open(filename, 'wb')
+    wf.setnchannels(channels)
+    wf.setsampwidth(p.get_sample_size(format))
+    wf.setframerate(rate)
+    wf.writeframes(b''.join(frames))
+    wf.close()
+
+    return {"message": "Recording completed", "file": filename}
+
+
+
 UPLOAD_DIR = "downloaded_papers"
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -96,7 +136,20 @@ async def download_arxiv(arxiv_url: str):
 
 class IndexRequest(BaseModel):
     file_path: str
+from fastapi.responses import FileResponse
 
+# @app.post("/text-to-speech")
+# def tts_endpoint(text: str):
+
+#     output_file = "answer.wav"
+
+#     text_to_speech(text, output_file)
+
+#     return FileResponse(
+#         output_file,
+#         media_type="audio/wav",
+#         filename="answer.wav"
+#     )
 @app.post("/index-paper")
 def index_paper(req: IndexRequest):
     file_path = req.file_path
