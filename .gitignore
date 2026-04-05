@@ -1,15 +1,7 @@
-# ---------- Environment & local files ----------
-.env
-
-# ---------- Notebooks ----------
-*.ipynb
-
-# ---------- PDF research papers (any depth) ----------
-**/data/papers/**/*.pdf
-
-# ---------- Python cache ----------
-**/__pycache__/
-**/*.pyc
-
-
-**/backend/downloaded_papers/*.pdf
+.vercel
+*.__pycache__
+*.pyc
+*.pyo
+*/data
+*/downloaded_papers
+*.env
